@@ -1,0 +1,8 @@
+{
+  "name": "GhostGuide (幽居)",
+  "description": "A professional platform for stigmatized property transactions with AI-powered risk assessment, incident summaries, and ROI analysis in a premium dark mode interface.",
+  "requestFramePermissions": [
+    "camera",
+    "geolocation"
+  ]
+}
