@@ -1,161 +1,131 @@
 
-import { Property, RiskLevel, Language } from './types';
+import { RiskLevel, Property, Badge, Project } from './types';
 
-export const TAIWAN_REGIONS = {
-  municipalities: [
-    { key: 'taipei', zh: '臺北市', ja: '台北市', en: 'Taipei' },
-    { key: 'new_taipei', zh: '新北市', ja: '新北市', en: 'New Taipei' },
-    { key: 'taoyuan', zh: '桃園市', ja: '桃園市', en: 'Taoyuan' },
-    { key: 'taichung', zh: '臺中市', ja: '台中市', en: 'Taichung' },
-    { key: 'tainan', zh: '臺南市', ja: '台南市', en: 'Tainan' },
-    { key: 'kaohsiung', zh: '高雄市', ja: '高雄市', en: 'Kaohsiung' },
-  ],
-  cities: [
-    { key: 'keelung', zh: '基隆市', ja: '基隆市', en: 'Keelung' },
-    { key: 'hsinchu_city', zh: '新竹市', ja: '新竹市', en: 'Hsinchu City' },
-    { key: 'chiayi_city', zh: '嘉義市', ja: '嘉義市', en: 'Chiayi City' },
-  ],
-  counties: [
-    { key: 'yilan', zh: '宜蘭縣', ja: '宜蘭県', en: 'Yilan' },
-    { key: 'hsinchu_county', zh: '新竹縣', ja: '新竹県', en: 'Hsinchu County' },
-    { key: 'miaoli', zh: '苗栗縣', ja: '苗栗県', en: 'Miaoli' },
-    { key: 'changhua', zh: '彰化縣', ja: '彰化県', en: 'Changhua' },
-    { key: 'nantou', zh: '南投縣', ja: '南投県', en: 'Nantou' },
-    { key: 'yunlin', zh: '雲林縣', ja: '雲林県', en: 'Yunlin' },
-    { key: 'chiayi_county', zh: '嘉義縣', ja: '嘉義県', en: 'Chiayi County' },
-    { key: 'pingtung', zh: '屏東縣', ja: '屏東県', en: 'Pingtung' },
-    { key: 'taitung', zh: '臺東縣', ja: '台東県', en: 'Taitung' },
-    { key: 'hualien', zh: '花蓮縣', ja: '花蓮県', en: 'Hualien' },
-    { key: 'penghu', zh: '澎湖縣', ja: '澎湖県', en: 'Penghu' },
-    { key: 'kinmen', zh: '金門縣', ja: '金門県', en: 'Kinmen' },
-    { key: 'lienchiang', zh: '連江縣', ja: '連江県', en: 'Lienchiang' },
-  ]
+export const COLORS = {
+  bg_dark: '#020617',
+  bg_card: '#0f172a',
+  ghost_gold: '#f59e0b',
+  blood_red: '#ef4444',
+  text_main: '#f8fafc',
+  text_dim: '#94a3b8'
 };
 
-export const TRANSLATIONS: Record<Language, any> = {
-  zh: {
-    discover: '任務版',
-    map: '靈界雷達',
-    upload: '資產鑑定',
-    profile: '獵人手冊',
-    login: '身分驗證',
-    searchPlace: '搜尋直轄市/縣市...',
-    socialLogin: '快速連結',
-    emailLogin: '電子郵件登入',
-    guest: '訪客模式',
-    roi: '預估回報',
-    risk: '凶惡等級',
-    investigate: '展開調查',
-    appraisal: '提交鑑定',
-    loading: '連線靈界中...',
-    news: '即時靈訊',
-    labels: {
-      [RiskLevel.NATURAL]: '淨化完成',
-      [RiskLevel.SUICIDE]: '冤魂低語',
-      [RiskLevel.ACCIDENT]: '血色意外',
-      [RiskLevel.HOMICIDE]: '惡靈降臨',
-      [RiskLevel.MAJOR_CRIME]: '禁忌禁區',
-    }
+export const RISK_LEVEL_CONFIG = {
+  [RiskLevel.NONE]: { label: '無風無浪', color: 'text-blue-400', score: '0–19' },
+  [RiskLevel.SLIGHT]: { label: '輕微陰氣', color: 'text-green-400', score: '20–39' },
+  [RiskLevel.CHILLY]: { label: '陰風陣陣', color: 'text-yellow-400', score: '40–59' },
+  [RiskLevel.RESENTFUL]: { label: '怨氣沖天', color: 'text-orange-500', score: '60–79' },
+  [RiskLevel.BLOOD]: { label: '血光之災', color: 'text-red-500', score: '80–94' },
+  [RiskLevel.EXTREME]: { label: '極度恐怖', color: 'text-red-700', score: '95–100' },
+};
+
+export const MOCK_PROJECTS: Project[] = [
+  {
+    id: 'prj1',
+    name: '錦新大樓',
+    address: '台北市中山區新生北路二段',
+    description: '台北市知名住商混合大樓，歷史背景豐富，目前已有多筆淨化紀錄。',
+    image: 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=800&q=80',
+    discussions: [
+      { id: 'd1', author: '匿名鄰居', content: '最近電梯好像修好了，比較沒那麼冷。', timestamp: '2024-03-01' },
+      { id: 'd2', author: '探靈家A', content: '這區磁場真的很特別，適合修行。', timestamp: '2024-03-05' }
+    ]
   },
-  ja: {
-    discover: 'クエスト',
-    map: '霊界レーダー',
-    upload: '資産鑑定',
-    profile: 'ハンター手帳',
-    login: '身分証明',
-    searchPlace: '市区町村を検索...',
-    socialLogin: 'ソーシャルログイン',
-    emailLogin: 'メールアドレス',
-    guest: 'ゲスト',
-    roi: '予想利回り',
-    risk: '凶悪レベル',
-    investigate: '調査開始',
-    appraisal: '鑑定提出',
-    loading: '霊界に接続中...',
-    news: '緊急霊報',
-    labels: {
-      [RiskLevel.NATURAL]: '浄化済',
-      [RiskLevel.SUICIDE]: '怨念の声',
-      [RiskLevel.ACCIDENT]: '惨劇',
-      [RiskLevel.HOMICIDE]: '凶行',
-      [RiskLevel.MAJOR_CRIME]: '禁忌',
-    }
-  },
-  en: {
-    discover: 'Quests',
-    map: 'Ghost Radar',
-    upload: 'Appraisal',
-    profile: 'Hunter ID',
-    login: 'Identity Auth',
-    searchPlace: 'Search Municipalities...',
-    socialLogin: 'Social Connect',
-    emailLogin: 'E-mail Login',
-    guest: 'Enter as Guest',
-    roi: 'ROI Est.',
-    risk: 'Danger',
-    investigate: 'Start Mission',
-    appraisal: 'Submit Appraisal',
-    loading: 'Syncing Ethereal...',
-    news: 'Live Feed',
-    labels: {
-      [RiskLevel.NATURAL]: 'Purified',
-      [RiskLevel.SUICIDE]: 'Whispers',
-      [RiskLevel.ACCIDENT]: 'Tragedy',
-      [RiskLevel.HOMICIDE]: 'Malice',
-      [RiskLevel.MAJOR_CRIME]: 'Forbidden',
-    }
+  {
+    id: 'prj2',
+    name: '西寧綜合大樓',
+    address: '台北市萬華區西寧南路',
+    description: '位於西門町周邊，雖然屋齡較高，但租金投報率極具競爭力。',
+    image: 'https://images.unsplash.com/photo-1551033397-c191c7d419f8?auto=format&fit=crop&w=800&q=80',
+    discussions: [
+      { id: 'd3', author: '租屋客', content: '採光有點弱，但房東人很好。', timestamp: '2024-02-20' }
+    ]
   }
-};
+];
 
 export const MOCK_PROPERTIES: Property[] = [
   {
     id: '1',
-    title: { zh: '信義區寂靜豪邸', ja: '信義サイレントラグジュアリー', en: 'Xinyi Luxury Silent Suite' },
-    address: { zh: '台北市信義區', ja: '台北市信義区', en: 'Xinyi District, Taipei City' },
-    region: 'taipei',
-    price: 45000000,
-    area: 45.5,
-    years: 12,
-    riskLevel: RiskLevel.SUICIDE,
-    incidentDate: '2022-05-14',
-    incidentType: { zh: '過勞自殺', ja: '過労自殺', en: 'Suicide (Overwork)' },
-    description: { 
-      zh: '高樓層豪華套房，通風極佳。前屋主為科技業高管。',
-      ja: '高層階の豪華スイート。前オーナーはIT企業の役員。',
-      en: 'A high-floor luxury suite. Previous owner was a tech executive.' 
-    },
-    roi: 4.2,
-    daysSinceIncident: 650,
-    imageUrl: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&q=80&w=800',
-    purifiedImageUrl: 'https://images.unsplash.com/photo-1600607687960-4a2123f7516e?auto=format&fit=crop&q=80&w=800'
+    projectId: 'prj1',
+    title: '錦新景觀豪華套房',
+    address: '台北市中山區新生北路二段 1xx 號',
+    city: '台北市',
+    district: '中山區',
+    market_price: 1500,
+    ghost_price: 850,
+    district_avg_unit: 85, 
+    ping: 18,
+    accident_level: 3,
+    riskLevel: RiskLevel.RESENTFUL,
+    zRiskScore: 72,
+    deathType: '跳樓',
+    year: 2018,
+    createdAt: '2024-03-10',
+    description: '位於市中心繁華地段，曾發生意外事故，具高度投資洗白潛力。',
+    isOverseasFriendly: true,
+    purified: true,
+    image: 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=800&q=80',
+    lat: 25.052,
+    lng: 121.524,
+    is_exclusive_part: true,
+    happened_during_ownership: false,
+    has_disclosure_doc: true
   },
   {
     id: '2',
-    title: { zh: '大稻埕百年古宅', ja: '大稻埕の百年古宅', en: 'Old Town Heritage Manor' },
-    address: { zh: '台北市大同區', ja: '台北市大同区', en: 'Datong District, Taipei City' },
-    region: 'taipei',
-    price: 18000000,
-    area: 32,
-    years: 45,
-    riskLevel: RiskLevel.MAJOR_CRIME,
-    incidentDate: '1998-11-02',
-    incidentType: { zh: '重大集體衝突', ja: '重大集団紛争', en: 'Mass Conflict Incident' },
-    description: { 
-      zh: '具深厚歷史底蘊。曾發生過重大流血衝突。',
-      ja: '深い歴史を持つ。大規模な流血事件が発生した場所。',
-      en: 'Significant historical roots. Dark legacy of mass conflict.' 
-    },
-    roi: 7.5,
-    daysSinceIncident: 9200,
-    imageUrl: 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&q=80&w=800',
-    purifiedImageUrl: 'https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?auto=format&fit=crop&q=80&w=800'
+    projectId: 'prj2',
+    title: '西寧景觀大戶',
+    address: '台北市萬華區西寧南路 8xx 號',
+    city: '台北市',
+    district: '萬華區',
+    market_price: 4800,
+    ghost_price: 2800,
+    district_avg_unit: 65,
+    ping: 85,
+    accident_level: 5,
+    riskLevel: RiskLevel.EXTREME,
+    zRiskScore: 98,
+    deathType: '他殺',
+    year: 1996,
+    createdAt: '2024-01-15',
+    description: '知名歷史大樓，稀有釋出。磁場強烈，建議專業洗屋師入場。',
+    isOverseasFriendly: false,
+    purified: false,
+    image: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80',
+    lat: 25.044,
+    lng: 121.506,
+    is_exclusive_part: true,
+    happened_during_ownership: true,
+    has_disclosure_doc: true
   }
 ];
 
-export const RISK_COLORS = {
-  [RiskLevel.NATURAL]: 'text-cyan-400',
-  [RiskLevel.SUICIDE]: 'text-yellow-400',
-  [RiskLevel.ACCIDENT]: 'text-orange-500',
-  [RiskLevel.HOMICIDE]: 'text-red-500',
-  [RiskLevel.MAJOR_CRIME]: 'text-purple-500',
+export const MOCK_BADGES: Badge[] = [
+  { id: 'b1', name: '大膽小鬼', icon: '👻', description: '登入即可獲得', unlocked: true },
+  { id: 'b2', name: '洗白專家', icon: '🧴', description: '查詢過 10 間淨化物件', unlocked: false }
+];
+
+export const TRANSLATIONS = {
+  'zh-TW': {
+    title: '幽居 Hauntly',
+    slogan: '洞悉瑕疵，直視恐懼。全台首款凶宅風險決策系統。',
+    search: '搜尋凶宅',
+    projects: '建案庫',
+    riskScore: 'Z-Risk™ 分數',
+    overseasGuide: '海外買家指南',
+    dashboard: '探靈儀表板',
+    priceHistory: '實價登錄',
+    disclaimer: '免責聲明：本站資料僅供參考，不具法律效力。建議交易前諮詢專業律師及房仲。'
+  },
+  'en': {
+    title: 'Hauntly',
+    slogan: 'Peer into the unseen. Taiwan\'s first haunted property risk system.',
+    search: 'Search Haunts',
+    projects: 'Projects',
+    riskScore: 'Z-Risk™ Score',
+    overseasGuide: 'Overseas Guide',
+    dashboard: 'Ghost Dashboard',
+    priceHistory: 'Market Data',
+    disclaimer: 'Disclaimer: Information for reference only. Consult professionals before purchase.'
+  }
 };

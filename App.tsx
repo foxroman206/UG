@@ -1,122 +1,353 @@
 
-import React, { useState } from 'react';
-import Home from './pages/Home';
-import MapView from './pages/Map';
-import Upload from './pages/Upload';
-import PropertyDetail from './pages/PropertyDetail';
-import Login from './pages/Login';
-import { MOCK_PROPERTIES, TRANSLATIONS } from './constants';
-import { Language, User } from './types';
-
-type Page = 'login' | 'discovery' | 'map' | 'upload' | 'profile' | 'detail';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { GloomLogo } from './components/GloomLogo';
+import { MOCK_PROPERTIES, MOCK_BADGES, MOCK_PROJECTS, TRANSLATIONS, RISK_LEVEL_CONFIG } from './constants';
+import { Property, RiskLevel, Language, UserState, UserRole, Project, SortOption } from './types';
+import { GhostCard, Badge as RiskBadge, calculateDiscount, PriceComparison, ROICalculator, Modal, CircularProgress, AccidentBadge, SortControls } from './components/UI';
+import { LegalGuide } from './components/Overseas/LegalGuide';
+import { MapSection } from './components/MapSection';
+import { LegalChecklist } from './components/LegalChecklist';
+import { LoginView } from './components/Login';
+import { PropertyUpload } from './components/PropertyUpload';
 
 const App: React.FC = () => {
-  const [currentPage, setCurrentPage] = useState<Page>('login');
-  const [lang, setLang] = useState<Language>('zh');
-  const [selectedPropertyId, setSelectedPropertyId] = useState<string | null>(null);
-  const [user, setUser] = useState<User>({
-    id: '0',
-    name: 'Ghost Hunter',
+  const [lang, setLang] = useState<Language>('zh-TW');
+  const [currentPage, setCurrentPage] = useState<'home' | 'search' | 'details' | 'dashboard' | 'overseas' | 'login' | 'upload' | 'projects' | 'project_detail'>('home');
+  const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
+  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  const [activePropertyId, setActivePropertyId] = useState<string | null>(null);
+  const [showMap, setShowMap] = useState(true);
+  const [isServiceModalOpen, setIsServiceModalOpen] = useState(false);
+  const [isLoanModalOpen, setIsLoanModalOpen] = useState(false);
+  const [serviceType, setServiceType] = useState<'cleaner' | 'cert'>('cleaner');
+  const [sortOption, setSortOption] = useState<SortOption>('date_new');
+  
+  const [user, setUser] = useState<UserState>({
     level: 1,
-    exp: 0,
-    isLoggedIn: false
+    exp: 20,
+    rankName: '遊魂',
+    badges: MOCK_BADGES,
+    profile: { 
+      isLoggedIn: false, 
+      name: '', 
+      email: '', 
+      provider: 'google', 
+      role: 'USER', 
+      bravery_level: 15,
+      verification_status: 'UNVERIFIED'
+    }
   });
 
+  const propertyRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
   const t = TRANSLATIONS[lang];
 
-  const navigateToDetail = (id: string) => {
-    setSelectedPropertyId(id);
-    setCurrentPage('detail');
+  // 排序邏輯
+  const sortedProperties = useMemo(() => {
+    let list = [...MOCK_PROPERTIES];
+    switch(sortOption) {
+      case 'price_asc': list.sort((a, b) => a.ghost_price - b.ghost_price); break;
+      case 'price_desc': list.sort((a, b) => b.ghost_price - a.ghost_price); break;
+      case 'date_new': list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()); break;
+      case 'level_asc': list.sort((a, b) => a.accident_level - b.accident_level); break;
+      case 'roi_desc': 
+        list.sort((a, b) => {
+          const roiA = (a.market_price * 0.9 - (a.ghost_price + 100)) / (a.ghost_price + 100);
+          const roiB = (b.market_price * 0.9 - (b.ghost_price + 100)) / (b.ghost_price + 100);
+          return roiB - roiA;
+        });
+        break;
+    }
+    return list;
+  }, [sortOption]);
+
+  const handlePropertyClick = (p: Property) => {
+    setSelectedProperty({
+      ...p,
+      purification_progress: p.id === '1' ? 75 : 0 // 模擬數據
+    });
+    setCurrentPage('details');
+    window.scrollTo(0, 0);
   };
 
-  const handleLogin = () => {
-    setUser({ ...user, isLoggedIn: true });
-    setCurrentPage('discovery');
+  const handleProjectClick = (prj: Project) => {
+    setSelectedProject(prj);
+    setCurrentPage('project_detail');
+    window.scrollTo(0, 0);
   };
 
-  const renderPage = () => {
-    if (!user.isLoggedIn && currentPage !== 'login') {
-      return <Login lang={lang} onLogin={handleLogin} />;
-    }
+  const handleLogin = (provider: any) => {
+    setUser({
+      ...user,
+      profile: { 
+        isLoggedIn: true, 
+        name: '探靈家 007', 
+        email: 'agent@ghostly.com', 
+        provider, 
+        role: 'AGENT',
+        bravery_level: 88,
+        verification_status: 'VERIFIED'
+      }
+    });
+    setCurrentPage('home');
+  };
 
-    switch (currentPage) {
-      case 'login':
-        return <Login lang={lang} onLogin={handleLogin} />;
-      case 'discovery':
-        return <Home onPropertyClick={navigateToDetail} lang={lang} />;
-      case 'map':
-        return <MapView onPropertyClick={navigateToDetail} lang={lang} />;
-      case 'upload':
-        return <Upload lang={lang} />;
-      case 'detail':
-        const prop = MOCK_PROPERTIES.find(p => p.id === selectedPropertyId);
-        return prop ? <PropertyDetail property={prop} onBack={() => setCurrentPage('discovery')} lang={lang} /> : <Home onPropertyClick={navigateToDetail} lang={lang} />;
-      case 'profile':
-        return (
-          <div className="flex flex-col items-center justify-center h-screen text-slate-500 italic px-12 text-center bg-black/40">
-            <div className="relative mb-8">
-              <div className="w-24 h-24 rounded-full border-4 border-amber-500 flex items-center justify-center animate-pulse shadow-[0_0_30px_rgba(245,158,11,0.2)]">
-                <svg className="w-12 h-12 text-amber-500" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zM12 5a3 3 0 110 6 3 3 0 010-6zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/></svg>
-              </div>
-              <div className="absolute -bottom-2 -right-2 bg-amber-500 text-slate-950 px-3 py-1 rounded-full text-xs font-black">LV.{user.level}</div>
-            </div>
-            <p className="font-serif italic text-2xl text-slate-200 mb-2">Spectral Analyst v1.0</p>
-            <p className="text-[10px] uppercase font-bold tracking-[0.4em] mb-8 text-slate-500">ID: HUNTER_6692</p>
-            
-            <div className="w-full bg-slate-900 h-2 rounded-full overflow-hidden mb-12 border border-white/5">
-              <div className="bg-amber-500 h-full w-1/3 shadow-[0_0_15px_rgba(245,158,11,0.5)]"></div>
-            </div>
+  const handleLogout = () => {
+    setUser({ ...user, profile: { ...user.profile!, isLoggedIn: false } });
+    setCurrentPage('home');
+  };
 
-            <button 
-              onClick={() => setUser({ ...user, isLoggedIn: false, level: 1 })}
-              className="text-xs text-red-500 font-bold uppercase tracking-widest hover:text-red-400 transition-colors border-b border-red-500/20 pb-1"
-            >
-              Sign Out Agent
-            </button>
-          </div>
-        );
-      default:
-        return <Home onPropertyClick={navigateToDetail} lang={lang} />;
-    }
+  const handleMarkerClick = (id: string) => {
+    setActivePropertyId(id);
+    propertyRefs.current[id]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  };
+
+  const getPropertiesInProject = (prjId: string) => {
+    return MOCK_PROPERTIES.filter(p => p.projectId === prjId);
   };
 
   return (
-    <div className="max-w-md mx-auto bg-slate-950 min-h-screen relative shadow-[0_0_100px_rgba(0,0,0,0.8)] border-x border-slate-900/50 overflow-x-hidden">
-      {/* HUD Header for Language Switcher */}
-      {(currentPage !== 'detail' && currentPage !== 'login') && (
-         <div className="fixed top-0 max-w-md mx-auto inset-x-0 p-4 z-[60] flex justify-end">
-            <div className="metallic-glass px-2 py-1 rounded-full flex gap-1 border border-white/5">
-                {(['zh', 'ja', 'en'] as Language[]).map(l => (
-                  <button key={l} onClick={() => setLang(l)} className={`w-6 h-6 rounded-full text-[10px] font-bold transition-all uppercase ${lang === l ? 'bg-amber-500 text-black shadow-lg shadow-amber-500/20' : 'text-slate-500'}`}>{l}</button>
-                ))}
-            </div>
-         </div>
-      )}
+    <div className="min-h-screen flex flex-col text-slate-200">
+      {/* 導航欄 */}
+      <nav className="sticky top-0 z-50 bg-slate-950/80 backdrop-blur-md border-b border-slate-800 px-6 py-4 flex items-center justify-between">
+        <div className="cursor-pointer" onClick={() => setCurrentPage('home')}>
+          <GloomLogo />
+        </div>
+        
+        <div className="hidden md:flex gap-8 font-bold text-sm">
+          <button onClick={() => setCurrentPage('search')} className="hover:text-amber-500 transition-colors">物件搜索</button>
+          <button onClick={() => setCurrentPage('projects')} className="hover:text-amber-500 transition-colors">建案資料庫</button>
+          {user.profile?.role === 'AGENT' && (
+            <button onClick={() => setCurrentPage('upload')} className="hover:text-amber-500 transition-colors">物件管理</button>
+          )}
+          <button className="hover:text-amber-500 transition-colors">我的收藏</button>
+        </div>
 
-      {renderPage()}
-      
-      {/* Gaming Style HUD Navigation */}
-      {currentPage !== 'login' && (
-        <nav className="fixed bottom-0 inset-x-0 max-w-md mx-auto metallic-glass border-t border-white/10 px-8 py-3 flex justify-between items-center z-50 rounded-t-[2.5rem] shadow-[0_-20px_50px_rgba(0,0,0,0.5)]">
-          <button onClick={() => setCurrentPage('discovery')} className={`flex flex-col items-center gap-1 transition-all duration-300 ${currentPage === 'discovery' ? 'text-amber-500 scale-110' : 'text-slate-500 opacity-60'}`}>
-            <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
-            <span className="text-[10px] uppercase font-black tracking-tighter">{t.discover}</span>
-          </button>
-          <button onClick={() => setCurrentPage('map')} className={`flex flex-col items-center gap-1 transition-all duration-300 ${currentPage === 'map' ? 'text-amber-500 scale-110' : 'text-slate-500 opacity-60'}`}>
-            <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M20.5 3l-.16.03L15 5.1 9 3 3.36 4.9c-.21.07-.36.25-.36.48V20.5c0 .28.22.5.5.5l.16-.03L9 18.9l6 2.1 5.64-1.9c.21-.07.36-.25.36-.48V3.5c0-.28-.22-.5-.5-.5zM15 19l-6-2.11V5l6 2.11V19z"/></svg>
-            <span className="text-[10px] uppercase font-black tracking-tighter">{t.map}</span>
-          </button>
-          <div className="relative -top-10 group">
-            <button onClick={() => setCurrentPage('upload')} className={`w-14 h-14 rounded-full bg-slate-50 text-slate-950 flex items-center justify-center shadow-2xl border-4 border-slate-950 transition-all duration-500 ${currentPage === 'upload' ? 'rotate-45 scale-125 bg-amber-500' : ''}`}>
-              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4"/></svg>
-            </button>
+        <div className="flex items-center gap-4">
+          {!user.profile?.isLoggedIn ? (
+            <button onClick={() => setCurrentPage('login')} className="bg-amber-500 text-slate-950 px-4 py-1.5 rounded-lg font-bold text-sm">登入探靈</button>
+          ) : (
+            <div className="flex items-center gap-4">
+              <div className="flex flex-col items-end leading-none hidden sm:flex">
+                <span className="text-xs font-black text-white">{user.profile.name}</span>
+                <span className="text-[8px] text-amber-500 uppercase tracking-widest mt-1">{user.profile.role}</span>
+              </div>
+              <div className="group relative">
+                <div onClick={() => setCurrentPage('dashboard')} className="w-10 h-10 rounded-full border-2 border-amber-500 overflow-hidden cursor-pointer">
+                  <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Lucky" alt="avatar" />
+                </div>
+                <div className="absolute right-0 top-12 w-48 bg-slate-900 border border-slate-800 rounded-xl hidden group-hover:block overflow-hidden shadow-2xl">
+                  <button onClick={() => setCurrentPage('dashboard')} className="w-full text-left px-4 py-3 text-xs hover:bg-slate-800 border-b border-slate-800">個人主頁</button>
+                  <button onClick={handleLogout} className="w-full text-left px-4 py-3 text-xs hover:bg-red-500/10 text-red-500">登出系統</button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </nav>
+
+      <main className="flex-grow container mx-auto px-6 py-8">
+        {currentPage === 'login' && <LoginView onLogin={handleLogin} />}
+        {currentPage === 'upload' && <PropertyUpload onSuccess={() => setCurrentPage('search')} />}
+
+        {currentPage === 'home' && (
+          <div className="space-y-16">
+            <section className="relative py-20 text-center">
+              <h1 className="text-5xl md:text-7xl font-black mb-6 bg-gradient-to-b from-white to-slate-500 bg-clip-text text-transparent">直視瑕疵，掌握行情</h1>
+              <p className="text-slate-400 mb-8 max-w-2xl mx-auto">整合全台凶宅資訊與建案討論，為您提供最真實的房地產心理瑕疵評估。</p>
+              <div className="flex justify-center gap-4">
+                <button onClick={() => setCurrentPage('search')} className="bg-amber-500 text-slate-950 px-8 py-3 rounded-xl font-black shadow-lg shadow-amber-500/30 hover:scale-105 transition-all uppercase tracking-widest">開始搜索凶宅</button>
+                <button onClick={() => setCurrentPage('projects')} className="bg-slate-800 text-white px-8 py-3 rounded-xl font-black border border-slate-700 hover:bg-slate-700 transition-all uppercase tracking-widest">瀏覽建案庫</button>
+              </div>
+            </section>
+            
+            <section>
+              <h2 className="text-3xl font-bold mb-8">最新入庫物件</h2>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                {MOCK_PROPERTIES.map(p => <GhostCard key={p.id} property={p} onClick={() => handlePropertyClick(p)} />)}
+              </div>
+            </section>
           </div>
-          <button onClick={() => setCurrentPage('profile')} className={`flex flex-col items-center gap-1 transition-all duration-300 ${currentPage === 'profile' ? 'text-amber-500 scale-110' : 'text-slate-500 opacity-60'}`}>
-            <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/></svg>
-            <span className="text-[10px] uppercase font-black tracking-tighter">{t.profile}</span>
-          </button>
-        </nav>
-      )}
+        )}
+
+        {currentPage === 'search' && (
+          <div className="h-[calc(100vh-140px)] flex flex-col">
+            <SortControls current={sortOption} onSort={setSortOption} />
+            <div className="flex gap-6 h-full overflow-hidden">
+              <div className="w-1/3 overflow-y-auto pr-2 custom-scrollbar">
+                {sortedProperties.map(p => <GhostCard key={p.id} ref={el => { propertyRefs.current[p.id] = el; }} property={p} onClick={() => handlePropertyClick(p)} />)}
+              </div>
+              <div className="flex-grow">
+                <MapSection properties={sortedProperties} activeId={activePropertyId} onMarkerClick={handleMarkerClick} />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {currentPage === 'projects' && (
+          <div className="space-y-8">
+            <h2 className="text-3xl font-black">🏢 建案資料庫</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {MOCK_PROJECTS.map(prj => (
+                <div key={prj.id} onClick={() => handleProjectClick(prj)} className="bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden cursor-pointer hover:border-amber-500 transition-all group">
+                  <div className="h-48 overflow-hidden">
+                    <img src={prj.image} alt={prj.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                  </div>
+                  <div className="p-6">
+                    <h3 className="text-xl font-bold mb-2 text-white">{prj.name}</h3>
+                    <p className="text-xs text-slate-500 mb-4 truncate">📍 {prj.address}</p>
+                    <div className="flex justify-between items-center">
+                      <span className="text-[10px] bg-amber-500/10 text-amber-500 px-2 py-1 rounded font-black border border-amber-500/20">{getPropertiesInProject(prj.id).length} 筆凶宅物件</span>
+                      <span className="text-[10px] text-slate-500 uppercase font-black">{prj.discussions.length} 則討論</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {currentPage === 'project_detail' && selectedProject && (
+          <div className="max-w-6xl mx-auto space-y-12 pb-20">
+            <div className="grid md:grid-cols-3 gap-12">
+              <div className="md:col-span-2 space-y-8">
+                <div className="relative rounded-3xl overflow-hidden h-64 border border-slate-800">
+                  <img src={selectedProject.image} className="w-full h-full object-cover" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950 to-transparent" />
+                  <div className="absolute bottom-8 left-8">
+                    <h1 className="text-4xl font-black text-white mb-2">{selectedProject.name}</h1>
+                    <p className="text-slate-400">📍 {selectedProject.address}</p>
+                  </div>
+                </div>
+
+                <section className="bg-slate-900 border border-slate-800 p-8 rounded-3xl">
+                  <h3 className="text-xl font-bold mb-6">關於此建案</h3>
+                  <p className="text-slate-300 leading-relaxed">{selectedProject.description}</p>
+                </section>
+
+                <section>
+                  <h3 className="text-xl font-bold mb-6">🏠 此建案包含之凶宅標的</h3>
+                  <div className="grid md:grid-cols-2 gap-6">
+                    {getPropertiesInProject(selectedProject.id).map(p => (
+                      <GhostCard key={p.id} property={p} onClick={() => handlePropertyClick(p)} />
+                    ))}
+                  </div>
+                </section>
+              </div>
+
+              <div className="space-y-8">
+                <section className="bg-slate-900 border border-slate-800 p-6 rounded-3xl">
+                  <h3 className="text-lg font-bold mb-6 flex items-center gap-2">
+                    <span className="text-amber-500">💬</span> 探靈討論串
+                  </h3>
+                  <div className="space-y-4">
+                    {selectedProject.discussions.map(d => (
+                      <div key={d.id} className="bg-slate-950 p-4 rounded-xl border border-slate-800">
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="text-xs font-black text-amber-500">{d.author}</span>
+                          <span className="text-[8px] text-slate-600 font-bold uppercase">{d.timestamp}</span>
+                        </div>
+                        <p className="text-xs text-slate-400 leading-relaxed">{d.content}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-6 pt-6 border-t border-slate-800">
+                    <textarea placeholder="對此建案有何觀察？" className="w-full bg-slate-950 border border-slate-800 p-3 rounded-xl text-xs text-white outline-none focus:border-amber-500 resize-none" rows={3} />
+                    <button className="w-full mt-3 py-2 bg-amber-500 text-slate-950 text-[10px] font-black rounded-lg uppercase tracking-widest">發表討論</button>
+                  </div>
+                </section>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {currentPage === 'details' && selectedProperty && (
+          <div className="max-w-6xl mx-auto space-y-12 pb-20">
+            <div className="grid lg:grid-cols-3 gap-12">
+              <div className="lg:col-span-2 space-y-8">
+                <div className="relative rounded-3xl overflow-hidden border border-slate-800 shadow-2xl">
+                  <img src={selectedProperty.image} className="w-full aspect-video object-cover" />
+                  <div className="absolute top-6 left-6 flex items-center gap-3">
+                    <AccidentBadge level={selectedProperty.accident_level} />
+                  </div>
+                  {selectedProperty.projectId && (
+                    <button 
+                      onClick={() => {
+                        const prj = MOCK_PROJECTS.find(pj => pj.id === selectedProperty.projectId);
+                        if (prj) handleProjectClick(prj);
+                      }}
+                      className="absolute bottom-6 left-6 bg-slate-950/80 backdrop-blur px-4 py-2 rounded-xl text-xs font-bold border border-slate-800 hover:border-amber-500 transition-all text-amber-500"
+                    >
+                      🏢 查看建案專頁
+                    </button>
+                  )}
+                </div>
+
+                <div className="bg-slate-900 border border-slate-800 rounded-3xl p-8">
+                  <h3 className="text-xl font-bold mb-8 flex items-center gap-3">
+                    <span className="w-2 h-6 bg-amber-500 rounded-full" />
+                    物件專業服務進度
+                  </h3>
+                  <div className="grid md:grid-cols-2 gap-12 items-center">
+                    <div className="flex items-center gap-8">
+                      <CircularProgress progress={selectedProperty.purification_progress || 0} />
+                      <div>
+                        <h4 className="font-bold text-lg">洗屋師進駐期</h4>
+                        <p className="text-xs text-slate-500 mt-2">目前由「資深洗屋師」進行安定進駐中，預計剩餘 3 個月達成洗白標準。</p>
+                      </div>
+                    </div>
+                    <div className="space-y-4">
+                      <button onClick={() => setIsServiceModalOpen(true)} className="w-full py-4 border border-amber-500 text-amber-500 rounded-xl font-bold hover:bg-amber-500/10 transition-all">
+                        聯絡委任法師
+                      </button>
+                      <button onClick={() => setIsLoanModalOpen(true)} className="w-full py-4 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-500 shadow-lg shadow-blue-500/20">
+                        🏦 凶宅專屬貸款諮詢
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <LegalChecklist property={selectedProperty} />
+              </div>
+
+              <div className="space-y-8">
+                <PriceComparison property={selectedProperty} />
+                <ROICalculator property={selectedProperty} />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {currentPage === 'dashboard' && (
+          <div className="max-w-4xl mx-auto space-y-8">
+             <div className="bg-slate-900 border border-slate-800 p-8 rounded-3xl flex items-center gap-8">
+                <div className="w-20 h-20 rounded-full bg-amber-500 flex items-center justify-center text-4xl shadow-xl shadow-amber-500/20">👻</div>
+                <div>
+                   <h2 className="text-3xl font-black">{user.profile?.name || '匿名探靈家'}</h2>
+                   <p className="text-slate-500 text-sm">{user.profile?.email}</p>
+                   <div className="mt-2 flex gap-2">
+                      <span className="bg-slate-800 text-[10px] px-2 py-1 rounded font-bold border border-slate-700 uppercase">{user.profile?.role} Auth</span>
+                      <span className="bg-amber-500/10 text-amber-500 text-[10px] px-2 py-1 rounded font-bold border border-amber-500/30 uppercase">Bravery: {user.profile?.bravery_level}</span>
+                   </div>
+                </div>
+             </div>
+          </div>
+        )}
+      </main>
+
+      <Modal isOpen={isLoanModalOpen} onClose={() => setIsLoanModalOpen(false)} title="凶宅專案貸款諮詢">
+        <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); alert('諮詢已送出，專員將在 24 小時內與您聯繫'); setIsLoanModalOpen(false); }}>
+          <p className="text-xs text-slate-400">由於標的具備心理瑕疵，我們將透過配合之特約銀行評估貸放成數（預計 4-6 成）。</p>
+          <div className="space-y-3">
+            <input required placeholder="您的姓名" className="w-full bg-slate-950 border border-slate-800 p-3 rounded-xl outline-none focus:border-amber-500 text-sm" />
+            <input required type="tel" placeholder="手機電話" className="w-full bg-slate-950 border border-slate-800 p-3 rounded-xl outline-none focus:border-amber-500 text-sm" />
+          </div>
+          <button type="submit" className="w-full bg-blue-600 text-white font-black py-4 rounded-xl shadow-xl shadow-blue-500/20">送出申請</button>
+        </form>
+      </Modal>
+
+      <footer className="bg-slate-950 border-t border-slate-800 px-6 py-12 text-center text-[10px] text-slate-700 uppercase tracking-widest font-black">
+        &copy; 2024 Hauntly Professional System | Ghostly Real Estate Logic
+      </footer>
     </div>
   );
 };

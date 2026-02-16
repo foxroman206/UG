@@ -23,6 +23,6 @@ dist-ssr
 *.sln
 *.sw?
 
-# 新增忽略環境變數檔案，避免 Key 洩漏
+# 環境變數檔案（已確保忽略 Key 洩漏）
 .env
 .env.local
