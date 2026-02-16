@@ -1,14 +1,13 @@
 import React, { useState } from 'react';
 import { Language } from '../types';
 import { TRANSLATIONS } from '../constants';
-import { auth, db } from '../firebase'; // 確保 firebase.js 已新增在根目錄
+import { auth } from '../firebase'; // 確保 firebase.js 已放在根目錄
 import {
   signInWithPopup,
   GoogleAuthProvider,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword
 } from "firebase/auth";
-import { doc, setDoc } from "firebase/firestore";
 
 const Login: React.FC<{ lang: Language, onLogin: () => void }> = ({ lang, onLogin }) => {
   const t = TRANSLATIONS[lang];
@@ -17,11 +16,11 @@ const Login: React.FC<{ lang: Language, onLogin: () => void }> = ({ lang, onLogi
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState(''); // 註冊時用的姓名
-  const [isRegisterMode, setIsRegisterMode] = useState(false); // 切換登入/註冊模式
+  const [isRegisterMode, setIsRegisterMode] = useState(false); // 登入/註冊切換
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Google 登入
+  // Google 登入（真實彈出視窗）
   const handleGoogleLogin = async () => {
     setLoading(true);
     setError('');
@@ -30,19 +29,8 @@ const Login: React.FC<{ lang: Language, onLogin: () => void }> = ({ lang, onLogi
     try {
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
-
-      // 儲存基本資料到 Firestore（如果新使用者）
-      await setDoc(doc(db, "users", user.uid), {
-        uid: user.uid,
-        displayName: user.displayName || "未設定姓名",
-        email: user.email,
-        photoURL: user.photoURL,
-        createdAt: new Date().toISOString(),
-        // 這裡之後可以跳到補填資料頁面，讓使用者填手機、出生日期等
-      }, { merge: true }); // merge: true 避免覆蓋舊資料
-
       alert(`Google 登入成功！歡迎 ${user.displayName || '使用者'}`);
-      onLogin(); // 你原本的登入成功回調（可改成跳轉到 Home）
+      onLogin(); // 登入成功後跳轉到首頁
     } catch (err: any) {
       setError(err.message || 'Google 登入失敗，請再試一次');
       console.error(err);
@@ -51,10 +39,14 @@ const Login: React.FC<{ lang: Language, onLogin: () => void }> = ({ lang, onLogi
     }
   };
 
-  // 信箱註冊
+  // 信箱註冊（真實註冊）
   const handleEmailRegister = async () => {
     if (!email || !password || !name) {
-      setError('請填寫所有欄位');
+      setError('請填寫姓名、信箱和密碼');
+      return;
+    }
+    if (password.length < 6) {
+      setError('密碼至少 6 個字元');
       return;
     }
 
@@ -65,17 +57,19 @@ const Login: React.FC<{ lang: Language, onLogin: () => void }> = ({ lang, onLogi
       const result = await createUserWithEmailAndPassword(auth, email, password);
       const user = result.user;
 
-      await setDoc(doc(db, "users", user.uid), {
-        uid: user.uid,
-        displayName: name,
-        email: email,
-        createdAt: new Date().toISOString(),
-      });
+      // 這裡可以存姓名到 displayName（Firebase 會自動更新）
+      await user.updateProfile({ displayName: name });
 
       alert(`註冊成功！歡迎 ${name}`);
-      onLogin(); // 登入成功後跳轉
+      onLogin(); // 註冊成功後跳轉
     } catch (err: any) {
-      setError(err.message || '註冊失敗，請檢查信箱格式或密碼長度');
+      if (err.code === 'auth/email-already-in-use') {
+        setError('此信箱已註冊，請直接登入');
+      } else if (err.code === 'auth/invalid-email') {
+        setError('信箱格式錯誤');
+      } else {
+        setError(err.message || '註冊失敗');
+      }
       console.error(err);
     } finally {
       setLoading(false);
@@ -97,7 +91,11 @@ const Login: React.FC<{ lang: Language, onLogin: () => void }> = ({ lang, onLogi
       alert('登入成功！');
       onLogin();
     } catch (err: any) {
-      setError(err.message || '登入失敗，請檢查帳號密碼');
+      if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
+        setError('信箱或密碼錯誤');
+      } else {
+        setError(err.message || '登入失敗');
+      }
       console.error(err);
     } finally {
       setLoading(false);
@@ -121,22 +119,22 @@ const Login: React.FC<{ lang: Language, onLogin: () => void }> = ({ lang, onLogi
         <div className="metallic-glass p-8 rounded-[2.5rem] border border-white/5 space-y-6">
           {error && <p className="text-red-500 text-center">{error}</p>}
 
-          {/* 切換登入/註冊模式 */}
+          {/* 切換登入/註冊 */}
           <div className="text-center">
             <button
               onClick={() => setIsRegisterMode(!isRegisterMode)}
               className="text-amber-500 hover:underline"
             >
-              {isRegisterMode ? t.alreadyHaveAccount : t.noAccountYet}
+              {isRegisterMode ? '已有帳號？登入' : '還沒有帳號？註冊'}
             </button>
           </div>
 
           {isRegisterMode ? (
-            // 註冊模式
+            // 註冊表單
             <>
               <input
                 type="text"
-                placeholder={t.namePlaceholder || "姓名"}
+                placeholder="姓名"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 className="w-full bg-slate-900 border border-slate-800 rounded-2xl py-4 px-6 text-sm outline-none focus:border-amber-500/50"
@@ -150,7 +148,7 @@ const Login: React.FC<{ lang: Language, onLogin: () => void }> = ({ lang, onLogi
               />
               <input
                 type="password"
-                placeholder={t.password}
+                placeholder="密碼（至少6位）"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full bg-slate-900 border border-slate-800 rounded-2xl py-4 px-6 text-sm outline-none focus:border-amber-500/50"
@@ -160,11 +158,11 @@ const Login: React.FC<{ lang: Language, onLogin: () => void }> = ({ lang, onLogi
                 disabled={loading}
                 className="w-full bg-amber-500 text-slate-950 py-4 rounded-2xl font-bold text-sm hover:bg-amber-400 transition-all active:scale-95 disabled:opacity-50"
               >
-                {loading ? '註冊中...' : t.register}
+                {loading ? '註冊中...' : '註冊'}
               </button>
             </>
           ) : (
-            // 登入模式
+            // 登入表單
             <>
               <input
                 type="email"
@@ -175,7 +173,7 @@ const Login: React.FC<{ lang: Language, onLogin: () => void }> = ({ lang, onLogi
               />
               <input
                 type="password"
-                placeholder={t.password}
+                placeholder="密碼"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full bg-slate-900 border border-slate-800 rounded-2xl py-4 px-6 text-sm outline-none focus:border-amber-500/50"
@@ -196,7 +194,7 @@ const Login: React.FC<{ lang: Language, onLogin: () => void }> = ({ lang, onLogi
             <div className="flex-grow border-t border-slate-800"></div>
           </div>
 
-          {/* 社群登入按鈕 */}
+          {/* Google 登入按鈕 */}
           <button
             onClick={handleGoogleLogin}
             disabled={loading}
@@ -205,12 +203,6 @@ const Login: React.FC<{ lang: Language, onLogin: () => void }> = ({ lang, onLogi
             <svg className="w-5 h-5" viewBox="0 0 24 24"><path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
             Google
           </button>
-
-          {/* Facebook 登入（之後再加） */}
-          {/* <button className="w-full flex items-center justify-center gap-3 bg-[#1877F2] text-white py-4 rounded-2xl font-bold text-sm hover:opacity-90 transition-all active:scale-95 shadow-xl">
-            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
-            Facebook
-          </button> */}
         </div>
 
         <button
